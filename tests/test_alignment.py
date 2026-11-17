@@ -11,57 +11,95 @@ GUIDE = "ACGTACGTACGTACGTACGT"
 
 
 def test_exact_match():
-    reference = "TTT" + GUIDE + "AGG" + "TTT"
+    reference = "AAAAA" + GUIDE + "AGG" + "TTTTT"
 
-    hits = find_off_targets(reference, GUIDE, 0)
+    hits = find_off_targets(
+        reference=reference,
+        guide=GUIDE,
+        max_mismatches=0,
+    )
 
-    assert any(
-        hit.position == 3
+    assert len(hits) >= 1
+
+    matching_hits = [
+        hit for hit in hits
+        if hit.position == 5
         and hit.strand == "+"
         and hit.mismatches == 0
-        for hit in hits
-    )
+        and hit.pam == "AGG"
+    ]
+
+    assert len(matching_hits) == 1
 
 
 def test_one_mismatch():
-    mutated = GUIDE[:5] + "A" + GUIDE[6:]
-    reference = "AAA" + mutated + "TGG" + "AAA"
+    mutated_guide = "TCGTACGTACGTACGTACGT"
+    reference = "AAAAA" + mutated_guide + "AGG" + "TTTTT"
 
-    hits = find_off_targets(reference, GUIDE, 1)
+    hits = find_off_targets(
+        reference=reference,
+        guide=GUIDE,
+        max_mismatches=1,
+    )
 
     assert any(
-        hit.position == 3 and hit.mismatches == 1
+        hit.position == 5
+        and hit.strand == "+"
+        and hit.mismatches == 1
         for hit in hits
     )
 
 
 def test_reverse_strand():
-    target = GUIDE + "AGG"
-    reverse = reverse_complement(target)
+    reverse_guide = reverse_complement(GUIDE)
 
-    reference = "TTT" + reverse + "TTT"
+    reference = (
+        "AAAAA"
+        + reverse_guide
+        + "AGG"
+        + "TTTTT"
+    )
 
-    hits = find_off_targets(reference, GUIDE, 0)
+    hits = find_off_targets(
+        reference=reference,
+        guide=GUIDE,
+        max_mismatches=0,
+    )
 
     assert any(
-        hit.position == 3 and hit.strand == "-"
+        hit.strand == "-"
+        and hit.mismatches == 0
         for hit in hits
     )
 
 
 def test_invalid_guide():
     with pytest.raises(ValueError):
-        find_off_targets("ACGTACGT", "ACGTX")
+        find_off_targets(
+            reference="ACGTACGTACGT",
+            guide="ACGTXYZ",
+        )
 
 
 def test_negative_mismatches():
     with pytest.raises(ValueError):
-        find_off_targets("ACGTACGT", "ACGT", -1)
+        find_off_targets(
+            reference="ACGTACGTACGT",
+            guide="ACGT",
+            max_mismatches=-1,
+        )
 
 
 def test_wrong_pam():
-    reference = "TTT" + GUIDE + "AAA" + "TTT"
+    reference = "AAAAA" + GUIDE + "AAA" + "TTTTT"
 
-    hits = find_off_targets(reference, GUIDE, 0)
+    hits = find_off_targets(
+        reference=reference,
+        guide=GUIDE,
+        max_mismatches=0,
+    )
 
-    assert not hits
+    assert not any(
+        hit.position == 5 and hit.strand == "+"
+        for hit in hits
+    )

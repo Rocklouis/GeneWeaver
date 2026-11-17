@@ -37,6 +37,136 @@ def pam_matches(sequence: str, pattern: str = "NGG") -> bool:
     return True
 
 
+def _count_mismatches(
+    sequence: str,
+    start: int,
+    guide: str,
+    max_mismatches: int,
+) -> int:
+    """Count mismatches and stop early when the limit is exceeded."""
+    mismatches = 0
+
+    for index, expected in enumerate(guide):
+        if sequence[start + index] != expected:
+            mismatches += 1
+
+            if mismatches > max_mismatches:
+                return mismatches
+
+    return mismatches
+
+
+def _scan_ngg(
+    sequence: str,
+    guide: str,
+    max_mismatches: int,
+    strand: str,
+    reference_length: int,
+) -> list[OffTargetHit]:
+    """
+    Efficiently scan standard NGG PAM sites.
+
+    Search for GG first, then inspect only possible PAM positions.
+    """
+    hits = []
+    guide_length = len(guide)
+    window_length = guide_length + 3
+
+    gg_position = sequence.find("GG")
+
+    while gg_position != -1:
+        pam_start = gg_position - 1
+        start = pam_start - guide_length
+
+        if (
+            pam_start >= 0
+            and start >= 0
+            and gg_position + 2 <= len(sequence)
+            and sequence[pam_start] in "ACGT"
+            and start + window_length <= len(sequence)
+        ):
+            mismatches = _count_mismatches(
+                sequence,
+                start,
+                guide,
+                max_mismatches,
+            )
+
+            if mismatches <= max_mismatches:
+                protospacer = sequence[start:start + guide_length]
+                pam = sequence[pam_start:pam_start + 3]
+
+                if strand == "+":
+                    genomic_position = start
+                else:
+                    genomic_position = (
+                        reference_length - start - window_length
+                    )
+
+                hits.append(
+                    OffTargetHit(
+                        position=genomic_position,
+                        strand=strand,
+                        mismatches=mismatches,
+                        protospacer=protospacer,
+                        pam=pam,
+                    )
+                )
+
+        gg_position = sequence.find("GG", gg_position + 1)
+
+    return hits
+
+
+def _scan_generic_pam(
+    sequence: str,
+    guide: str,
+    max_mismatches: int,
+    pam_pattern: str,
+    strand: str,
+    reference_length: int,
+) -> list[OffTargetHit]:
+    """General scanning path for PAM patterns other than NGG."""
+    hits = []
+    guide_length = len(guide)
+    pam_length = len(pam_pattern)
+    window_length = guide_length + pam_length
+
+    for start in range(len(sequence) - window_length + 1):
+        pam_start = start + guide_length
+        pam = sequence[pam_start:pam_start + pam_length]
+
+        if not pam_matches(pam, pam_pattern):
+            continue
+
+        mismatches = _count_mismatches(
+            sequence,
+            start,
+            guide,
+            max_mismatches,
+        )
+
+        if mismatches <= max_mismatches:
+            if strand == "+":
+                genomic_position = start
+            else:
+                genomic_position = (
+                    reference_length - start - window_length
+                )
+
+            hits.append(
+                OffTargetHit(
+                    position=genomic_position,
+                    strand=strand,
+                    mismatches=mismatches,
+                    protospacer=sequence[start:start + guide_length],
+                    pam=pam,
+                )
+            )
+
+    return hits
+
+
 def find_off_targets(
     reference: str,
     guide: str,
@@ -47,8 +177,6 @@ def find_off_targets(
     Search both DNA strands for potential CRISPR off-target sites.
 
     Positions are zero-based coordinates on the original reference.
-    The PAM is located immediately after the protospacer in the
-    orientation being scanned.
     """
     reference = normalize_dna(reference)
     guide = normalize_dna(guide)
@@ -68,47 +196,35 @@ def find_off_targets(
     if any(base not in "ACGTN" for base in reference):
         raise ValueError("Reference contains invalid DNA characters.")
 
+    reverse_reference = reverse_complement(reference)
+
     hits = []
-    window_length = len(guide) + len(pam_pattern)
 
-    strands = [
+    for strand, sequence in (
         ("+", reference),
-        ("-", reverse_complement(reference)),
-    ]
-
-    for strand, sequence in strands:
-        for start in range(len(sequence) - window_length + 1):
-            protospacer = sequence[start:start + len(guide)]
-            pam_start = start + len(guide)
-
-            pam = sequence[
-                pam_start:pam_start + len(pam_pattern)
-            ]
-
-            if not pam_matches(pam, pam_pattern):
-                continue
-
-            mismatches = sum(
-                a != b for a, b in zip(protospacer, guide)
-            )
-
-            if mismatches <= max_mismatches:
-                if strand == "+":
-                    genomic_position = start
-                else:
-                    genomic_position = (
-                        len(reference) - start - window_length
-                    )
-
-                hits.append(
-                    OffTargetHit(
-                        position=genomic_position,
-                        strand=strand,
-                        mismatches=mismatches,
-                        protospacer=protospacer,
-                        pam=pam,
-                    )
+        ("-", reverse_reference),
+    ):
+        if pam_pattern == "NGG":
+            hits.extend(
+                _scan_ngg(
+                    sequence,
+                    guide,
+                    max_mismatches,
+                    strand,
+                    len(reference),
                 )
+            )
+        else:
+            hits.extend(
+                _scan_generic_pam(
+                    sequence,
+                    guide,
+                    max_mismatches,
+                    pam_pattern,
+                    strand,
+                    len(reference),
+                )
+            )
 
     return sorted(
         hits,
