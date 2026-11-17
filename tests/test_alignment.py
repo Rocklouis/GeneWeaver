@@ -53,10 +53,12 @@ def test_one_mismatch():
 def test_reverse_strand():
     reverse_guide = reverse_complement(GUIDE)
 
+    # A reverse-strand NGG site appears as CCN
+    # followed by the reverse complement of the guide.
     reference = (
         "AAAAA"
+        + "CCT"
         + reverse_guide
-        + "AGG"
         + "TTTTT"
     )
 
@@ -71,7 +73,6 @@ def test_reverse_strand():
         and hit.mismatches == 0
         for hit in hits
     )
-
 
 def test_invalid_guide():
     with pytest.raises(ValueError):
