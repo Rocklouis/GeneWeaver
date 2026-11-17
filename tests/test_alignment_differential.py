@@ -127,7 +127,7 @@ def test_randomized_ngg_differential():
 
 @pytest.mark.parametrize(
     "pam_pattern",
-    ["NGG", "NAG", "TTTV"],
+    ["NGG", "NAG", "TTA"],
 )
 def test_custom_pam_differential(pam_pattern):
     """Verify standard and custom PAM patterns."""
