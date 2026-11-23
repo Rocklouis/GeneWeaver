@@ -8,3 +8,5 @@ dist/
 *.so
 *.pyd
 .env
+# Generated benchmark datasets and results
+data/benchmarks/
