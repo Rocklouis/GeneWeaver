@@ -7,7 +7,10 @@ from textual.widgets import (
     Label,
     ProgressBar,
     Static,
+    Select,
 )
+from pathlib import Path
+from geneweaver.fasta import iter_fasta_chunks
 
 
 class GeneWeaverDashboard(App):
@@ -15,6 +18,12 @@ class GeneWeaverDashboard(App):
 
     TITLE = "GeneWeaver"
     SUB_TITLE = "GPU-Accelerated CRISPR Alignment Engine"
+    DATASETS = [
+        ("Mock Genome", "data/mock_genome.fasta"),
+        ("100 KB Genome", "data/benchmarks/genome_100kb.fasta"),
+        ("1 MB Genome", "data/benchmarks/genome_1mb.fasta"),
+        ("10 MB Genome", "data/benchmarks/genome_10mb.fasta"),
+    ]
 
     CSS = """
     Screen {
@@ -73,9 +82,15 @@ class GeneWeaverDashboard(App):
 
             with Vertical(classes="panel"):
                 yield Label(
-                    "GENEWEAVER SYSTEM STATUS",
-                    classes="panel-title",
-                )
+    "Genome size: Waiting for input",
+    id="genome-size",
+    classes="metric",
+)
+                yield Select(
+        self.DATASETS,
+        prompt="Choose a genome",
+        id="dataset-select",
+    )
                 yield Label(
                     "● System initialized",
                     id="status",
@@ -149,11 +164,49 @@ class GeneWeaverDashboard(App):
                 id="footer-note",
             )
 
-        yield Footer()
+            yield Footer()
 
-    def action_refresh(self) -> None:
+    def on_select_changed(self, event: Select.Changed) -> None:
+        """Load selected FASTA metadata into the dashboard."""
+
+        if event.value is Select.BLANK:
+            return
+
+        selected_path = Path(str(event.value))
+
+        if not selected_path.is_file():
+            self.query_one("#status", Label).update(
+                "File error: FASTA dataset not found"
+            )
+            self.query_one("#genome-size", Label).update(
+                "Genome size: Unavailable"
+            )
+            return
+
+        selected_name = next(
+            (
+                name
+                for name, path in self.DATASETS
+                if path == str(selected_path)
+            ),
+            selected_path.name,
+        )
+
+        self.query_one("#dataset", Label).update(
+            f"Dataset: {selected_name}"
+        )
+
+        genome_size = sum(
+            chunk.core_length
+            for chunk in iter_fasta_chunks(selected_path)
+        )
+
+        self.query_one("#genome-size", Label).update(
+            f"Genome size: {genome_size:,} bases"
+        )
+
         self.query_one("#status", Label).update(
-            "● Dashboard refreshed"
+            "● Dataset loaded successfully"
         )
 
 
