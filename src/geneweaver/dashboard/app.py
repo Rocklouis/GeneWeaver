@@ -134,7 +134,7 @@ class GeneWeaverDashboard(App):
                 )
 
             
-            with Horizontal():
+            with Vertical():
 
                 with Vertical(classes="panel"):
                     yield Label(
