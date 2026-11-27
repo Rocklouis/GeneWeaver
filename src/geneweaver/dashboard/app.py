@@ -67,6 +67,28 @@ class GeneWeaverDashboard(App):
         margin-top: 1;
         margin-bottom: 1;
     }
+    #metrics-panel {
+        border: double #22c55e;
+        background: #1e293b;
+        padding: 1 2;
+        height: auto;
+        width: 1fr;
+        margin-bottom: 1;
+    }
+
+    #metrics-panel .panel-title {
+        color: #4ade80;
+        text-style: bold;
+    }
+
+    #hits,
+    #chunks-processed,
+    #bases-processed,
+    #alignment-time,
+    #progress-label {
+        color: #f8fafc;
+        text-style: bold;
+    }
 
     #footer-note {
         color: #94a3b8;
@@ -134,63 +156,59 @@ class GeneWeaverDashboard(App):
                 )
 
             
-            with Vertical():
+            with Vertical(classes="panel"):
+                yield Label(
+                    "GENOME INFORMATION",
+                    classes="panel-title",
+                )
+                yield Label(
+                    "Dataset: Not selected",
+                    id="dataset",
+                    classes="metric",
+                )
+                yield Label(
+                    "Genome size: Waiting for input",
+                    id="genome-size-detail",
+                    classes="metric",
+                )
+                yield Label(
+                    "Sequence type: DNA",
+                    classes="metric",
+                )
 
-                with Vertical(classes="panel"):
-                    yield Label(
-                        "GENOME INFORMATION",
-                        classes="panel-title",
-                    )
-                    yield Label(
-                        "Dataset: Not selected",
-                        id="dataset",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "Genome size: Waiting for input",
-                        id="genome-size-detail",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "Sequence type: DNA",
-                        classes="metric",
-                    )
-
-                with Vertical(classes="panel"):
-                    yield Label(
-                        "ALIGNMENT METRICS",
-                        classes="panel-title",
-                    )
-                    yield Label(
-                        "CPU alignment: Ready",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "GPU alignment: Ready",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "Off-target hits: 0",
-                        id="hits",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "Chunks processed: 0",
-                        id="chunks-processed",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "Bases processed: 0",
-                        id="bases-processed",
-                        classes="metric",
-                    )
-                    yield Label(
-                        "Alignment time: 0.00 seconds",
-                        id="alignment-time",
-                        classes="metric",
-                    )
-
-
+            with Vertical(classes="panel", id="metrics-panel"):
+                yield Label(
+                    "ALIGNMENT METRICS",
+                    classes="panel-title",
+                )
+                yield Label(
+                    "CPU alignment: Ready",
+                    classes="metric",
+                )
+                yield Label(
+                    "GPU alignment: Ready",
+                    classes="metric",
+                )
+                yield Label(
+                    "Off-target hits: 0",
+                    id="hits",
+                    classes="metric",
+                )
+                yield Label(
+                    "Chunks processed: 0",
+                    id="chunks-processed",
+                    classes="metric",
+                )
+                yield Label(
+                    "Bases processed: 0",
+                    id="bases-processed",
+                    classes="metric",
+                )
+                yield Label(
+                    "Alignment time: 0.00 seconds",
+                    id="alignment-time",
+                    classes="metric",
+                )
             with Vertical(classes="panel"):
                 yield Label(
                     "PROCESSING PROGRESS",
